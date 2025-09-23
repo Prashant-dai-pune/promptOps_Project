@@ -1,0 +1,32 @@
+version: 0.2
+phases:
+  pre_build:
+    commands:
+      - echo "Setting up environment variables..."
+      - REPO_URL=https://github.com/Prashant-dai-pune/promptOps_Project.git
+      - REPO_NAME=promptOps_Project
+      - ECR_REPO=fqts/prompt_ops
+      - IMAGE_NAME=my-app
+      - IMAGE_TAG=v1
+      - AWS_REGION=us-east-1
+      - aws --version
+      - ACCOUNT_ID=$(aws sts get-caller-identity --query account --output text)
+      - REGION=$(aws configure get region)
+      - ECR_URI=${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}
+      - echo "Cloning the code from GitHub..."
+      - git clone ${REPO_URL}
+      - cd ${REPO_NAME}
+      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+  build:
+    commands:
+      - echo "Building the Docker image..."
+      - docker build -t $ECR_REPO/$IMAGE_NAME:$IMAGE_TAG .
+      - docker tag $ECR_REPO/$IMAGE_NAME:$IMAGE_TAG $ECR_REPO/$IMAGE_NAME:latest
+  post_build:
+    commands:
+      - echo "Pushing the Docker image to ECR..."
+      - docker push $ECR_URI/$IMAGE_NAME:$IMAGE_TAG
+      - docker push $ECR_URI/$IMAGE_NAME:latest
+artifacts:
+  files:
+    - '**/*'
